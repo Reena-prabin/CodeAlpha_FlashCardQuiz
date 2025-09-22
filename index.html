@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcard Quiz App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1f2937;
+        }
+        .flip-card {
+            background-color: transparent;
+            width: 100%;
+            height: 300px;
+            perspective: 1000px; /* 3D effect */
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari */
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 10px 15px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            color: #1f2937;
+        }
+        .flip-card-front {
+            background-color: #ffffff;
+        }
+        .flip-card-back {
+            background-color: #e2e8f0;
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-lg bg-gray-50 rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-center mb-4 text-gray-800">Flashcard Quiz</h1>
+        
+        <!-- Score and Progress -->
+        <div class="w-full flex justify-between items-center text-sm md:text-base font-semibold text-gray-600 mb-6">
+            <p>Score: <span id="score" class="text-green-600">0</span></p>
+            <p>Card <span id="currentCard">1</span> of <span id="totalCards">0</span></p>
+        </div>
+
+        <!-- Flashcard -->
+        <div id="flashcard" class="flip-card mb-8 w-full" style="display: none;">
+            <div class="flip-card-inner">
+                <!-- Front of the card -->
+                <div class="flip-card-front">
+                    <p id="question" class="text-xl md:text-2xl font-bold text-center"></p>
+                    <button id="flipBtn" class="mt-4 p-2 text-sm bg-blue-500 text-white rounded-md shadow-md hover:bg-blue-600 transition">Flip Card</button>
+                </div>
+                <!-- Back of the card -->
+                <div class="flip-card-back">
+                    <p class="text-sm font-semibold text-gray-500 mb-2">Answer</p>
+                    <p id="answer" class="text-xl md:text-2xl font-bold text-center"></p>
+                    <div id="feedbackBtns" class="mt-4 flex gap-4">
+                        <button id="correctBtn" class="p-2 text-sm bg-green-500 text-white rounded-md shadow-md hover:bg-green-600 transition">
+                            <i class="fas fa-check"></i> Correct
+                        </button>
+                        <button id="incorrectBtn" class="p-2 text-sm bg-red-500 text-white rounded-md shadow-md hover:bg-red-600 transition">
+                            <i class="fas fa-times"></i> Incorrect
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Start & End -->
+        <div id="startScreen" class="text-center">
+            <p class="text-lg text-gray-700 mb-4">Click below to start the quiz!</p>
+            <button id="startQuizBtn" class="bg-blue-600 text-white p-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105 font-semibold text-lg">
+                Start Quiz
+            </button>
+        </div>
+        
+        <div id="resultsScreen" class="text-center" style="display: none;">
+            <h2 class="text-2xl md:text-3xl font-bold mb-4">Quiz Complete!</h2>
+            <p class="text-lg md:text-xl text-gray-700 mb-2">Your final score is:</p>
+            <p id="finalScore" class="text-5xl font-extrabold text-green-600 mb-6"></p>
+            <button id="restartBtn" class="bg-blue-600 text-white p-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 transform hover:scale-105 font-semibold text-lg">
+                Restart Quiz
+            </button>
+        </div>
+
+        <!-- Add Flashcard Section -->
+        <div class="w-full bg-white rounded-2xl shadow-xl p-6 md:p-8 mt-8">
+            <h2 class="text-xl md:text-2xl font-extrabold mb-4 text-gray-800 text-center">Add Your Own Flashcards</h2>
+            <div class="space-y-4">
+                <input type="text" id="newQuestion" placeholder="Enter a new question" class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 text-lg">
+                <input type="text" id="newAnswer" placeholder="Enter the answer" class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 text-lg">
+                <button id="addCardBtn" class="w-full bg-green-600 text-white p-3 rounded-lg shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105 font-semibold text-lg">
+                    Add Card
+                </button>
+            </div>
+        </div>
+
+    </div>
+    
+    <script>
+        // Default flashcard data
+        const defaultFlashcards = [
+            { question: "What does HTML stand for?", answer: "HyperText Markup Language" },
+            { question: "What does CSS stand for?", answer: "Cascading Style Sheets" },
+            { question: "What is a JavaScript variable?", answer: "A container for a value." },
+            { question: "What is Git?", answer: "A version control system." },
+            { question: "What is an API?", answer: "Application Programming Interface" }
+        ];
+
+        let flashcards = [];
+        let shuffledFlashcards = [];
+
+        // UI elements
+        const startScreen = document.getElementById('startScreen');
+        const startQuizBtn = document.getElementById('startQuizBtn');
+        const flashcardContainer = document.getElementById('flashcard');
+        const flashcardInner = document.querySelector('.flip-card-inner');
+        const questionEl = document.getElementById('question');
+        const answerEl = document.getElementById('answer');
+        const flipBtn = document.getElementById('flipBtn');
+        const correctBtn = document.getElementById('correctBtn');
+        const incorrectBtn = document.getElementById('incorrectBtn');
+        const scoreEl = document.getElementById('score');
+        const currentCardEl = document.getElementById('currentCard');
+        const totalCardsEl = document.getElementById('totalCards');
+        const resultsScreen = document.getElementById('resultsScreen');
+        const finalScoreEl = document.getElementById('finalScore');
+        const restartBtn = document.getElementById('restartBtn');
+        const newQuestionInput = document.getElementById('newQuestion');
+        const newAnswerInput = document.getElementById('newAnswer');
+        const addCardBtn = document.getElementById('addCardBtn');
+
+        // State variables
+        let currentCardIndex = 0;
+        let score = 0;
+        let isFlipped = false;
+
+        // Function to shuffle an array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        // Function to load flashcards from local storage
+        function loadFlashcards() {
+            const savedCards = localStorage.getItem('customFlashcards');
+            if (savedCards) {
+                flashcards = [...defaultFlashcards, ...JSON.parse(savedCards)];
+            } else {
+                flashcards = [...defaultFlashcards];
+            }
+        }
+
+        // Function to start the quiz
+        function startQuiz() {
+            loadFlashcards();
+            if (flashcards.length === 0) {
+                alert("Please add some flashcards first!");
+                return;
+            }
+            shuffledFlashcards = shuffleArray([...flashcards]);
+
+            startScreen.style.display = 'none';
+            flashcardContainer.style.display = 'block';
+            currentCardIndex = 0;
+            score = 0;
+            updateUI();
+            totalCardsEl.textContent = shuffledFlashcards.length;
+        }
+
+        // Function to update the flashcard and score
+        function updateUI() {
+            if (currentCardIndex < shuffledFlashcards.length) {
+                const card = shuffledFlashcards[currentCardIndex];
+                questionEl.textContent = card.question;
+                answerEl.textContent = card.answer;
+                scoreEl.textContent = score;
+                currentCardEl.textContent = currentCardIndex + 1;
+                flashcardContainer.classList.remove('flipped');
+                isFlipped = false;
+            } else {
+                endQuiz();
+            }
+        }
+
+        // Function to flip the card
+        function flipCard() {
+            flashcardContainer.classList.add('flipped');
+            isFlipped = true;
+        }
+
+        // Function to handle the end of the quiz
+        function endQuiz() {
+            flashcardContainer.style.display = 'none';
+            resultsScreen.style.display = 'block';
+            finalScoreEl.textContent = `${score} / ${shuffledFlashcards.length}`;
+        }
+
+        // Function to add a new flashcard
+        function addFlashcard() {
+            const newQuestion = newQuestionInput.value.trim();
+            const newAnswer = newAnswerInput.value.trim();
+
+            if (newQuestion && newAnswer) {
+                // Save the new flashcard
+                const newCard = { question: newQuestion, answer: newAnswer };
+                const savedCards = JSON.parse(localStorage.getItem('customFlashcards') || '[]');
+                savedCards.push(newCard);
+                localStorage.setItem('customFlashcards', JSON.stringify(savedCards));
+
+                // Clear input fields and show a success message
+                newQuestionInput.value = '';
+                newAnswerInput.value = '';
+                alert('Flashcard added successfully!');
+            } else {
+                alert('Please enter both a question and an answer.');
+            }
+        }
+
+        // Event listeners
+        startQuizBtn.addEventListener('click', startQuiz);
+        flipBtn.addEventListener('click', flipCard);
+        correctBtn.addEventListener('click', () => {
+            if (isFlipped) {
+                score++;
+                currentCardIndex++;
+                updateUI();
+            }
+        });
+        incorrectBtn.addEventListener('click', () => {
+            if (isFlipped) {
+                currentCardIndex++;
+                updateUI();
+            }
+        });
+        restartBtn.addEventListener('click', () => {
+            resultsScreen.style.display = 'none';
+            startQuiz();
+        });
+        addCardBtn.addEventListener('click', addFlashcard);
+    </script>
+</body>
+</html>
